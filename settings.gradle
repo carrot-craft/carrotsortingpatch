@@ -1,16 +1,26 @@
 pluginManagement {
     repositories {
+        // プラグインは、それぞれの公式リポジトリから、そのグループのものだけを取得する
         maven {
             name = 'Fabric'
             url = 'https://maven.fabricmc.net/'
+            content {
+                includeGroupAndSubgroups('net.fabricmc')
+            }
         }
         maven {
             name = 'NeoForged'
             url = 'https://maven.neoforged.net/releases'
+            content {
+                includeGroupAndSubgroups('net.neoforged')
+            }
         }
         maven {
             name = 'MinecraftForge'
             url = 'https://maven.minecraftforge.net/'
+            content {
+                includeGroupAndSubgroups('net.minecraftforge')
+            }
         }
         mavenCentral()
         gradlePluginPortal()

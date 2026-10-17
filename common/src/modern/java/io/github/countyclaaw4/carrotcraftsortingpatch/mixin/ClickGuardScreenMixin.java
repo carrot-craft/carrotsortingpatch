@@ -13,7 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 人のクリック（マウス・キー）は必ず画面の slotClicked を通る。その間だけ「人の操作」と印を付ける。
  * 印が無いまま保護スロットへ来るクリック（ソート Mod などの自動操作）は ClickGuardGameModeMixin が止める。
  */
-@Mixin(AbstractContainerScreen.class)
+// 優先度を下げて（数字を大きくして）他の Mod の後に動かす。IPN や ClientSort が slotClicked の先頭で
+// 処理を取り消した時に、こちらの「人の操作」の印だけが残らないようにするため。
+@Mixin(value = AbstractContainerScreen.class, priority = 2000)
 public abstract class ClickGuardScreenMixin {
 
     @Inject(method = "slotClicked", at = @At("HEAD"), require = 0)

@@ -7,12 +7,12 @@ def eraConfigs = [
         modern: [
                 label          : '26.1-26.3',
                 java           : 25,
-                mcFabric       : '>=26.1 <27',
-                mcMaven        : '[26.1,27)',
+                mcFabric       : '>=26.1 <26.4',
+                mcMaven        : '[26.1,26.4)',
                 fabricLoaderMin: '0.19.0',
                 neoLoaderRange : '[11,)',
-                neoDepRange    : '[26.1.0.19-beta,)',
-                forgeSpecRange : '[62,)',
+                neoDepRange    : '[26.1.0.19-beta,26.4)',
+                forgeSpecRange : '[62,67)',
         ],
         legacy: [
                 label          : '1.21.11',
@@ -22,7 +22,7 @@ def eraConfigs = [
                 fabricLoaderMin: '0.18.0',
                 neoLoaderRange : '[4,)',
                 neoDepRange    : '[21.11,22)',
-                forgeSpecRange : '[61,)',
+                forgeSpecRange : '[61,62)',
         ],
 ]
 

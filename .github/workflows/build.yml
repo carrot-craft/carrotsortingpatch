@@ -69,6 +69,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - name: タグと mod_version が一致しているか確認（v1.1.0 なら mod_version=1.1.0）
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          if [ "v${version}" != "${TAG}" ]; then
+            echo "タグ ${TAG} と gradle.properties の mod_version (${version}) が違います" >&2
+            exit 1
+          fi
       - name: 6 構成の jar を集めて SHA-256 を作る
         run: ./gradlew --no-daemon collectReleaseJars
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
