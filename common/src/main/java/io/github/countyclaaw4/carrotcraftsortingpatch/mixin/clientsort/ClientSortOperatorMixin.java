@@ -17,47 +17,50 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * ClientSort の操作対象スロット一覧から、エンダーチェスト画面の保護スロットを外す。
+ * ClientSort が入っていなければ（@Pseudo）何も起きない。
+ */
 @Pseudo
 @Mixin(targets = "dev.terminalmc.clientsort.client.inventory.operator.SingleUseOperator", remap = false)
 public class ClientSortOperatorMixin {
 
-    @Inject(method = "collectSlots", at = @At("RETURN"), cancellable = true, remap = false)
-    private void onCollectSlots(CallbackInfoReturnable<Slot[]> cir) {
-        Slot[] originalSlots = cir.getReturnValue();
-        if (originalSlots == null || originalSlots.length == 0) {
-            return;
-        }
-
-        if (!ServerCondition.isTargetServer()) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.player == null) {
-            return;
-        }
-
-        AbstractContainerMenu menu = mc.player.containerMenu;
-        if (!VaultGuiDetector.isVaultGui(menu)) {
-            return;
-        }
-
-        // エンダーチェストGUIの場合: コンテナ領域内インデックス 45〜53 を除外
-        int[] containerSlotIndices = VaultGuiDetector.getContainerSlotIndices(menu, originalSlots);
-        List<Slot> filtered = new ArrayList<>();
-        for (int i = 0; i < originalSlots.length; i++) {
-            Slot slot = originalSlots[i];
-            if (InterceptorRegistry.shouldProtectSlot(ClientSortInterceptor.MOD_ID, containerSlotIndices[i])) {
-                // 最下段9スロット(45〜53)を除外
-                continue;
+    @Inject(method = "collectSlots", at = @At("RETURN"), cancellable = true, remap = false, require = 0)
+    private void carrotSortingPatch$onCollectSlots(CallbackInfoReturnable<Slot[]> cir) {
+        try {
+            Slot[] originalSlots = cir.getReturnValue();
+            if (originalSlots == null || originalSlots.length == 0) {
+                return;
             }
-            filtered.add(slot);
-        }
+            if (!ServerCondition.isTargetServer()) {
+                return;
+            }
 
-        if (filtered.size() != originalSlots.length) {
-            CarrotSortingPatch.LOGGER.info("[CarrotSortingPatch] ClientSortの操作対象から最下段9スロット(45〜53)を除外しました ({} -> {} スロット)",
-                    originalSlots.length, filtered.size());
-            cir.setReturnValue(filtered.toArray(Slot[]::new));
+            Minecraft mc = Minecraft.getInstance();
+            if (mc == null || mc.player == null) {
+                return;
+            }
+            AbstractContainerMenu menu = mc.player.containerMenu;
+            if (!VaultGuiDetector.isVaultGui(menu)) {
+                return;
+            }
+
+            int[] containerSlotIndices = VaultGuiDetector.getContainerSlotIndices(menu, originalSlots);
+            List<Slot> filtered = new ArrayList<>();
+            for (int i = 0; i < originalSlots.length; i++) {
+                if (InterceptorRegistry.shouldProtectSlot(ClientSortInterceptor.MOD_ID, containerSlotIndices[i])) {
+                    continue;
+                }
+                filtered.add(originalSlots[i]);
+            }
+
+            if (filtered.size() != originalSlots.length) {
+                CarrotSortingPatch.LOGGER.info("[CarrotSortingPatch] ClientSort の操作対象から保護スロットを除外しました ({} -> {} スロット)",
+                        originalSlots.length, filtered.size());
+                cir.setReturnValue(filtered.toArray(new Slot[0]));
+            }
+        } catch (Throwable t) {
+            CarrotSortingPatch.LOGGER.error("[CarrotSortingPatch] ClientSort 連携でエラーが発生しました（保護なしで続行します）", t);
         }
     }
 }

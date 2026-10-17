@@ -1,16 +1,16 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.8",
   "package": "io.github.countyclaaw4.carrotcraftsortingpatch.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "plugin": "io.github.countyclaaw4.carrotcraftsortingpatch.mixin.CarrotSortingPatchMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
   "client": [
     "AbstractContainerScreenMixin",
+    "ClickGuardScreenMixin",
+    "ClickGuardGameModeMixin",
     "ipn.IpnAreaTypesMixin",
-    "ipn.IpnContainerClickerMixin",
     "clientsort.ClientSortOperatorMixin"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 0
   }
 }

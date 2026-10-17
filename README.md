@@ -1,6 +1,6 @@
 # CarrotCraft Sorting Patch
 
-CarrotCraft のエンダーチェスト GUI で、インベントリソート Mod のソートやアイテム移動から操作用スロットを保護する、クライアント専用 Mod です。Fabric と NeoForge に対応しています。
+CarrotCraft のエンダーチェスト画面で、インベントリソート Mod のソートやアイテム移動から操作用スロットを保護する、クライアント専用 Mod です。Fabric・NeoForge・Forge に対応しています。
 
 > [!NOTE]
 > AIによって生成されたコード及びドキュメントが含まれています。
@@ -11,40 +11,52 @@ CarrotCraft のエンダーチェスト GUI で、インベントリソート Mo
 - [動作環境](#動作環境)
 - [対応するソート Mod](#対応するソート-mod)
 - [インストール](#インストール)
-  - [保護対象となる画面](#保護対象となる画面)
+- [保護対象となる画面](#保護対象となる画面)
+- [仕組みと安全性](#仕組みと安全性)
+- [制限事項](#制限事項)
 - [開発者向け](#開発者向け)
-  - [ビルドとテスト](#ビルドとテスト)
-  - [プロジェクト構成](#プロジェクト構成)
 
-### 機能
+## 機能
 
-対象サーバーのエンダーチェスト GUI を検出すると、コンテナ内スロット 45〜53 をソートやアイテム移動の対象から保護します。
+CarrotCraft のエンダーチェスト画面を検出すると、コンテナ内スロット 45〜53（最下段の 9 マス）を、ソートやアイテム移動の対象から保護します。「プラン」「使い方」や保管庫の切り替えボタンなどが、ソートで動いたり、自動操作で押されたりするのを防ぎます。
 
-### 動作環境
+## 動作環境
 
-- Minecraft: 26.1 以降
-- Fabric Loader: 0.19.0 以降（Fabric 版）
-- NeoForge: Minecraft 26.1 以降（NeoForge 版）
-- Java: 25 以降net`
+| ローダー | Minecraft | ローダーの版 | Java |
+|---|---|---|---|
+| Fabric | 1.21.11 | Fabric Loader 0.18.0 以降 | 21 以降 |
+| Fabric | 26.1 〜 26.3 | Fabric Loader 0.19.0 以降 | 25 以降 |
+| NeoForge | 1.21.11 | NeoForge 21.11 系 | 21 以降 |
+| NeoForge | 26.1 〜 26.3 | NeoForge 26.1 以降 | 25 以降 |
+| Forge | 1.21.11 | Forge 61 以降 | 21 以降 |
+| Forge | 26.1 〜 26.3 | Forge 62 以降 | 25 以降 |
 
-### 対応するソート Mod
+使うローダーと Minecraft に合った jar を選んでください（ファイル名の `+mc` の後ろが対応する Minecraft です）。
+ビルドと動作確認の対象は、1.21.11・26.1.2・26.2・26.3 です。
 
-以下の Mod のソート処理に対応しています。これらの Mod は本 Mod に含まれないため、別途インストールしてください。
+## 対応するソート Mod
 
-- [Inventory Profiles Next](https://modrinth.com/mod/inventory-profiles-next) (`inventoryprofilesnext`)
-- [ClientSort](https://github.com/TerminalMC/ClientSort) (`clientsort`)
+| Mod | 守り方 |
+|---|---|
+| [Inventory Profiles Next](https://modrinth.com/mod/inventory-profiles-next) (`inventoryprofilesnext`) | 操作対象のスロット一覧から保護スロットを外す |
+| [ClientSort](https://github.com/TerminalMC/ClientSort) (`clientsort`) | 操作対象のスロット一覧から保護スロットを外す |
+| 上記以外のソート Mod | クリック送信を直接呼ぶ Mod なら、保護スロットへのクリックを遮断する |
 
-### インストール
+上記の Mod は本 Mod に含まれないため、別途インストールしてください。
+その他の Mod についても、クリック送信を直接呼ぶ種類のものであれば、保護スロットへのクリックは遮断されます（ただし、その Mod 自身の並べ替え結果までは調整できません）。
+画面の操作（`slotClicked`）として送ってくる Mod は、人の操作と区別できないため遮断できません。
 
-1. 上記の動作環境を満たす Fabric または NeoForge クライアントを用意します。
-2. 使用するローダー用の本 Mod jar と、同じローダー向けの対応ソート Mod を Minecraft の `mods` フォルダーに配置します。
-3. Minecraft を起動し、CarrotCraft のエンダーチェスト GUI を開きます。
+## インストール
 
-### 保護対象となる画面
+1. 上記の動作環境を満たすクライアントを用意します。
+2. 使用するローダーと Minecraft 用の本 Mod の jar を、`mods` フォルダーに配置します。
+3. Minecraft を起動し、CarrotCraft のエンダーチェスト画面を開きます。
+
+## 保護対象となる画面
 
 次の条件をすべて満たす画面だけを保護対象として検出します。
 
-- 接続先が `play.carrotcraft.net`
+- 接続先が `carrotcraft.net` または、その下のサブドメイン（`play.carrotcraft.net` など）
 - プレイヤーインベントリを除くコンテナ領域が 54 スロット
 - コンテナ内スロット 45 に「プラン」と表示された時計がある
 - コンテナ内スロット 53 に「使い方」と表示された本がある
@@ -52,31 +64,59 @@ CarrotCraft のエンダーチェスト GUI で、インベントリソート Mo
 
 それ以外のサーバーや画面には保護処理を適用しません。
 
----
+## 仕組みと安全性
+
+- **通信しません。** ネットワーク・ファイルの読み書き・外部コマンドの実行はしません。サーバーから送られてくるアイテムの表示名とデータを読むだけです。
+- **失敗しても画面は壊しません。** 判定や連携に失敗した場合は、保護をあきらめて何もせず続行します（Mixin は任意扱いで、ソート Mod の更新で内部が変わっても、起動はできます）。
+- **人の操作は止めません。** 人のクリックは必ず画面の `slotClicked` を通ります。その外から保護スロットへ来るクリックだけを遮断します。
+
+## 制限事項
+
+- 接続先が `carrotcraft.net` 配下のホスト名でない場合（IP アドレスで直接接続した場合など）は、保護されません。
+- サーバー側の画面の構成（スロットの位置・名前）が変わると、検出できなくなり、保護されなくなります。
+- 守れるのは、この Mod を入れたプレイヤーだけです。
+- 画面の操作として送ってくるタイプのソート Mod（個別対応していないもの）は、保護できません。
 
 ## 開発者向け
 
 ### ビルドとテスト
 
-Java 25 を用意し、プロジェクトのルートで実行してください。
+JDK 25 を用意し、プロジェクトのルートで実行してください（1.21.11 向けも JDK 25 でビルドできます）。
 
 ```bash
 ./gradlew build
 ```
 
-テスト:
+ローダー × 時代ごとの 6 つのサブプロジェクトに分かれています。
+
+| サブプロジェクト | 対象 |
+|---|---|
+| `fabric` / `neoforge` / `forge` | Minecraft 26.1〜26.3（難読化なし・Java 25） |
+| `fabric-legacy` / `neoforge-legacy` / `forge-legacy` | Minecraft 1.21.11（難読化あり・Java 21） |
+
+26.x 向けの jar は、既定では最低版（26.1.2）に対して作ります。ほかの版に対して作れるかを確かめる時は `-Pmc=` を付けます。
 
 ```bash
-./gradlew test
+./gradlew :fabric:build :neoforge:build :forge:build -Pmc=26.3
 ```
 
-ビルド成果物は各ローダーの `build/libs/` に出力されます。
+`-Pmc` に指定できる値は `versions/` にあるファイル名（`26.1.2` `26.2` `26.3`）です。
+ビルド成果物は各サブプロジェクトの `build/libs/` に出力されます。配布用の jar を `build/release/` に集めて SHA-256 を作るには、次を実行します。
 
-- Fabric: `fabric/build/libs/`
-- NeoForge: `neoforge/build/libs/`（Minecraft 26.2 を基準にビルドした、26.1 以降向けの単一jar）
+```bash
+./gradlew collectReleaseJars
+```
 
 ### プロジェクト構成
 
-- `common/` — Fabric と NeoForge で共有する判定・保護処理・Mixin・テスト
-- `fabric/` — Fabric の初期化処理、Mixin プラグイン、メタデータ
-- `neoforge/` — NeoForge の初期化処理、Mixin プラグイン、メタデータ
+- `common/src/main` — すべての構成で共通の判定・保護処理・Mixin
+- `common/src/modern` / `common/src/legacy` — Minecraft の内部名が違う部分（クリック保護の Mixin）
+- `common/src/test` — テスト（Minecraft のクラスに依存しない純粋なロジックだけ）
+- `fabric/` `neoforge/` `forge/` — 各ローダーの起動処理とメタデータ（legacy 版も共用）
+- `versions/` — 検証に使う各ローダー・Minecraft のバージョン表
+- `gradle/common.gradle` — 6 構成が共通で使うビルド設定（対応範囲・Java・メタデータの埋め込み）
+
+### CI とリリース
+
+GitHub Actions（`.github/workflows/build.yml`）が、push と PR のたびに全ローダー × 全対応バージョンのビルドとテストを実行します。
+`v1.1.0` のようなタグを push すると、GitHub 上でビルドした jar と `SHA256SUMS.txt` が下書きのリリースに添付されます（公開は手動です）。配布する jar は、ここで作ったものだけにしてください。

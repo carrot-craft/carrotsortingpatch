@@ -1,79 +1,21 @@
 plugins {
+    id 'java'
     id 'net.fabricmc.fabric-loom'
 }
 
-base {
-    archivesName = "${project.archives_base_name}-fabric"
-}
-
-def minecraftVersionRange = project.minecraft_version_range
-def minecraftVersionRangeFileLabel = minecraftVersionRange
-        .replace(">=", "")
-        .replace("<=", "-")
-        .replace(">", "")
-        .replace("<", "-")
-        .replace("[", "")
-        .replace("]", "")
-        .replace("(", "")
-        .replace(")", "")
-        .replace(",", "-")
-        .replaceAll("\\s+", "")
-        .replaceAll("-+", "-")
-
-if (minecraftVersionRange.startsWith(">=") && !minecraftVersionRange.contains("<")) {
-    minecraftVersionRangeFileLabel = minecraftVersionRangeFileLabel.replaceAll('-+$', '') + "+"
-}
-
-tasks.withType(AbstractArchiveTask).configureEach {
-    archiveVersion = "${project.version}+mc${minecraftVersionRangeFileLabel}"
-}
-
-sourceSets {
-    main {
-        java.srcDir '../common/src/main/java'
-        resources.srcDir '../common/src/main/resources'
-    }
-    test {
-        java.srcDir '../common/src/test/java'
-    }
-}
+ext.loader = 'fabric'
+ext.era = 'modern'
+apply from: "$rootDir/gradle/common.gradle"
 
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
-    maven { url = 'https://maven.shedaniel.me/' }
-    maven { url = 'https://maven.terraformersmc.com/' }
-    mavenCentral()
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-    testImplementation platform('org.junit:junit-bom:5.10.2')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    minecraft "com.mojang:minecraft:${vp.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${vp.fabric_loader_version}"
 }
 
-processResources {
-    inputs.property 'version', project.version
-    inputs.property 'minecraft_version_range', minecraftVersionRange
-    filesMatching('fabric.mod.json') {
-        expand version: project.version, minecraft_version_range: minecraftVersionRange
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.release = 25
-    options.encoding = 'UTF-8'
-}
-
-tasks.withType(Test).configureEach {
-    useJUnitPlatform()
-    failOnNoDiscoveredTests = false
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
+// 26.x は難読化なしなので、jar がそのまま配布物
+ext.releaseJar = tasks.named('jar').flatMap { it.archiveFile }
+tasks.register('remapOrJar') { dependsOn tasks.named('jar') }

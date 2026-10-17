@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev'
+}
+
+ext.loader = 'neoforge'
+ext.era = 'legacy'
+apply from: "$rootDir/gradle/common.gradle"
+
+dependencies {
+    // NeoForge のテスト実行環境には slf4j が入っていないため
+    testRuntimeOnly 'org.slf4j:slf4j-api:2.0.17'
+}
+
+neoForge {
+    version = vp.neoforge_version
+
+    runs {
+        client {
+            client()
+        }
+    }
+
+    mods {
+        carrotsortingpatch {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+ext.releaseJar = tasks.named('jar').flatMap { it.archiveFile }
+tasks.register('remapOrJar') { dependsOn tasks.named('jar') }

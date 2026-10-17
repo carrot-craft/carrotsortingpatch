@@ -3,13 +3,16 @@
   "id": "carrotsortingpatch",
   "version": "${version}",
   "name": "CarrotCraft Sorting Patch",
-  "description": "CarrotCraftのエンダーチェストGUIでUI行を保護するクライアントMod",
+  "description": "CarrotCraftのエンダーチェスト画面で、インベントリソートModが操作用スロットを動かさないよう守るクライアント専用Mod",
   "authors": [
     "CountyClaw4",
-    "Gemini",
-    "Claude"
+    "CarrotCraft"
   ],
-  "contact": {},
+  "contact": {
+    "homepage": "https://github.com/carrot-craft/carrotsortingpatch",
+    "sources": "https://github.com/carrot-craft/carrotsortingpatch",
+    "issues": "https://github.com/carrot-craft/carrotsortingpatch/issues"
+  },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
@@ -21,8 +24,8 @@
     "carrotsortingpatch.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.0",
-    "minecraft": "${minecraft_version_range}",
-    "java": ">=25"
+    "fabricloader": ">=${fabric_loader_min}",
+    "minecraft": "${minecraft_version_range_fabric}",
+    "java": ">=${java_version}"
   }
 }

@@ -1,13 +1,15 @@
 modLoader="javafml"
-loaderVersion="${neoforge_loader_version_range}"
+loaderVersion="${neoforge_loader_range}"
 license="MIT"
+issueTrackerURL="https://github.com/carrot-craft/carrotsortingpatch/issues"
 
 [[mods]]
 modId="carrotsortingpatch"
 version="${version}"
 displayName="CarrotCraft Sorting Patch"
-description='''CarrotCraftのエンダーチェストGUIでUI行を保護するクライアントMod'''
-features={java_version="[25,)"}
+displayURL="https://github.com/carrot-craft/carrotsortingpatch"
+authors="CountyClaw4, CarrotCraft"
+description='''CarrotCraftのエンダーチェスト画面で、インベントリソートModが操作用スロットを動かさないよう守るクライアント専用Mod'''
 
 [[mixins]]
 config="carrotsortingpatch.mixins.json"
@@ -15,11 +17,13 @@ config="carrotsortingpatch.mixins.json"
 [[dependencies.carrotsortingpatch]]
 modId="neoforge"
 type="required"
-versionRange="[26.1.0.19-beta,)"
+versionRange="${neoforge_dep_range}"
+ordering="NONE"
 side="CLIENT"
 
 [[dependencies.carrotsortingpatch]]
 modId="minecraft"
 type="required"
-versionRange="${minecraft_version_range}"
+versionRange="${minecraft_version_range_maven}"
+ordering="NONE"
 side="CLIENT"

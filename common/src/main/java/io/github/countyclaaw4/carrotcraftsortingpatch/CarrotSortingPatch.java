@@ -13,7 +13,7 @@ public final class CarrotSortingPatch {
     private CarrotSortingPatch() {}
 
     public static void initialize() {
-        LOGGER.info("[CarrotSortingPatch] 初期化開始 (対象サーバー: play.carrotcraft.net)");
+        LOGGER.info("[CarrotSortingPatch] 初期化開始");
 
         // 各ソートMod向けインターセプターの登録
         InterceptorRegistry.register(new IpnInterceptor());

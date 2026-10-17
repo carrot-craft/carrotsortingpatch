@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+ext.loader = 'fabric'
+ext.era = 'legacy'
+apply from: "$rootDir/gradle/common.gradle"
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${vp.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${vp.fabric_loader_version}"
+}
+
+// 1.21.11 は難読化ありなので、remapJar の出力が配布物
+ext.releaseJar = tasks.named('remapJar').flatMap { it.archiveFile }
+tasks.register('remapOrJar') { dependsOn tasks.named('remapJar') }

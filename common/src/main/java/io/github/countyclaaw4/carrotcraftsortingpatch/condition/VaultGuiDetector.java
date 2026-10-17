@@ -11,32 +11,24 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 
-import java.util.Arrays;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.List;
 
 public final class VaultGuiDetector {
-    public static final int REQUIRED_CONTAINER_SLOTS = 54;
+    public static final int REQUIRED_CONTAINER_SLOTS = SlotLayout.REQUIRED_CONTAINER_SLOTS;
     public static final int SLOT_INDEX_PLAN = 45;
     public static final int SLOT_INDEX_HOWTO = 53;
-
-    public static final int PROTECTED_SLOT_MIN = 45;
-    public static final int PROTECTED_SLOT_MAX = 53;
 
     public static final String NAME_PLAN = "プラン";
     public static final String NAME_HOWTO = "使い方";
 
-    private static final Pattern FORMATTING_PATTERN = Pattern.compile("§[0-9a-fk-orA-FK-OR]");
-
     private VaultGuiDetector() {}
 
     /**
-     * 指定されたコンテナメニューが play.carrotcraft.net のエンダーチェストGUIであるか判定します。
-     * 条件A: コンテナ領域が54スロットであること。
-     * 条件B: index 53 が book、「使い方」、carrotgui:item = 1b であること。
-     * 条件C: index 45 が clock、「プラン」、carrotgui:item = 1b であること。
-     * 判定中に例外が発生した場合は安全に false を返します。
+     * 指定されたコンテナメニューが CarrotCraft のエンダーチェスト GUI か判定します。
+     * 条件A: コンテナ領域がちょうど 54 スロットであること。
+     * 条件B: index 45 が clock、「プラン」、carrotgui:item = 1b であること。
+     * 条件C: index 53 が book、「使い方」、carrotgui:item = 1b であること。
+     * 判定中に例外が発生した場合は安全に false を返します（保護を諦めるだけで、画面は壊さない）。
      */
     public static boolean isVaultGui(AbstractContainerMenu menu) {
         if (menu == null) {
@@ -44,52 +36,30 @@ public final class VaultGuiDetector {
         }
 
         try {
-            // 条件A: コンテナ領域が54スロットであること
             if (!checkContainerSlotCount(menu)) {
                 return false;
             }
-
-            // 条件C: 左下スロット（index 45）が clock / 「プラン」 / carrotgui:item = 1b
-            Slot slot45 = menu.getSlot(SLOT_INDEX_PLAN);
-            if (!matchesSlotItem(slot45, Items.CLOCK, NAME_PLAN)) {
+            if (!matchesSlotItem(menu.getSlot(SLOT_INDEX_PLAN), Items.CLOCK, NAME_PLAN)) {
                 return false;
             }
-
-            // 条件B: 最終スロット（index 53）が book / 「使い方」 / carrotgui:item = 1b
-            Slot slot53 = menu.getSlot(SLOT_INDEX_HOWTO);
-            if (!matchesSlotItem(slot53, Items.BOOK, NAME_HOWTO)) {
-                return false;
-            }
-
-            return true;
+            return matchesSlotItem(menu.getSlot(SLOT_INDEX_HOWTO), Items.BOOK, NAME_HOWTO);
         } catch (Throwable t) {
-            // 失敗時は何もしない（安全性のルール1）
             return false;
         }
     }
 
     /**
-     * プレイヤーインベントリを除くコンテナ領域のスロット数がちょうど54スロットか確認します。
+     * プレイヤーインベントリを除くコンテナ領域のスロット数がちょうど 54 か確認します。
      */
     public static boolean checkContainerSlotCount(AbstractContainerMenu menu) {
         if (menu.slots.size() < REQUIRED_CONTAINER_SLOTS) {
             return false;
         }
-
-        int containerSlots = 0;
-        for (Slot slot : menu.slots) {
-            if (slot.container instanceof Inventory) {
-                // プレイヤーインベントリに達したらコンテナ領域終了
-                break;
-            }
-            containerSlots++;
-        }
-
-        return containerSlots == REQUIRED_CONTAINER_SLOTS;
+        return SlotLayout.leadingContainerSlots(playerSlotFlags(menu.slots)) == REQUIRED_CONTAINER_SLOTS;
     }
 
     /**
-     * スロットのアイテムが指定アイテムID、指定名、carrotgui:item=1bを満たすか判定します。
+     * スロットのアイテムが、指定アイテム・指定名・carrotgui:item = 1b をすべて満たすか判定します。
      */
     public static boolean matchesSlotItem(Slot slot, Item expectedItem, String expectedName) {
         if (slot == null) {
@@ -100,109 +70,85 @@ public final class VaultGuiDetector {
             return false;
         }
 
-        // 1. アイテムID完全一致
+        // 1. アイテムの種類
         if (stack.getItem() != expectedItem) {
             return false;
         }
 
-        // 2. カスタム名判定（装飾コードを除去してトリミング比較）
-        Component customNameComp = stack.get(DataComponents.CUSTOM_NAME);
-        if (customNameComp == null) {
-            customNameComp = stack.getHoverName();
+        // 2. 名前（装飾コードを除いて前後の空白を外して比較）
+        Component nameComponent = stack.get(DataComponents.CUSTOM_NAME);
+        if (nameComponent == null) {
+            nameComponent = stack.getHoverName();
         }
-        if (customNameComp == null) {
+        if (nameComponent == null) {
             return false;
         }
-        String cleanName = stripFormatting(customNameComp.getString()).trim();
-        if (!expectedName.equals(cleanName)) {
+        if (!NameMatcher.matches(nameComponent.getString(), expectedName)) {
             return false;
         }
 
-        // 3. carrotgui:item = 1b 判定
+        // 3. carrotgui:item = 1b
         CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
         if (customData == null) {
             return false;
         }
-
-        CompoundTag tag = customData.copyTag();
-        CompoundTag publicBukkitValues = tag.getCompoundOrEmpty("PublicBukkitValues");
-        if (publicBukkitValues.isEmpty() || !publicBukkitValues.contains("carrotgui:item")) {
+        CompoundTag publicBukkitValues = customData.copyTag().getCompoundOrEmpty("PublicBukkitValues");
+        if (!publicBukkitValues.contains("carrotgui:item")) {
             return false;
         }
-
-        byte val = publicBukkitValues.getByteOr("carrotgui:item", (byte) 0);
-        return val == (byte) 1;
+        return publicBukkitValues.getByteOr("carrotgui:item", (byte) 0) == (byte) 1;
     }
 
     /**
-     * コンテナ内のスロットインデックス（0始まり）が保護対象（45〜53）であるか判定します。
+     * コンテナ内のスロット番号（0 始まり）が保護対象（45〜53）か判定します。
      */
     public static boolean isProtectedContainerSlot(int containerSlotIndex) {
-        return containerSlotIndex >= PROTECTED_SLOT_MIN && containerSlotIndex <= PROTECTED_SLOT_MAX;
+        return SlotLayout.isProtectedContainerSlot(containerSlotIndex);
     }
 
     /**
-     * メニュー全体のスロットIDから、コンテナ領域内インデックス（0始まり）を計算します。
-     * プレイヤーインベントリのスロットや無効なスロットの場合は -1 を返します。
+     * メニュー全体のスロット番号から、コンテナ領域内の番号（0 始まり）を計算します。
+     * プレイヤーインベントリのスロットや範囲外の場合は -1 を返します。
      */
     public static int getContainerSlotIndex(AbstractContainerMenu menu, int slotId) {
         if (menu == null || slotId < 0 || slotId >= menu.slots.size()) {
             return -1;
         }
-
-        int containerIndex = 0;
-        for (int i = 0; i < menu.slots.size(); i++) {
-            Slot slot = menu.slots.get(i);
-            if (slot.container instanceof Inventory) {
-                // プレイヤーインベントリ以降は対象外
-                continue;
-            }
-            if (i == slotId || slot.index == slotId) {
-                return containerIndex;
-            }
-            containerIndex++;
-        }
-
-        return -1;
+        return SlotLayout.containerIndices(playerSlotFlags(menu.slots))[slotId];
     }
 
     /**
-     * 複数スロットのコンテナ内インデックスを、メニューを一度走査して取得します。
+     * 複数スロットのコンテナ内番号を、メニューを一度走査して取得します。
      * メニューに含まれないスロットやプレイヤーインベントリのスロットは -1 になります。
      */
     public static int[] getContainerSlotIndices(AbstractContainerMenu menu, Slot[] slots) {
         if (slots == null) {
             return new int[0];
         }
-
-        int[] indices = new int[slots.length];
-        Arrays.fill(indices, -1);
+        int[] result = new int[slots.length];
+        java.util.Arrays.fill(result, -1);
         if (menu == null || slots.length == 0) {
-            return indices;
+            return result;
         }
 
-        Map<Slot, Integer> indexBySlot = new IdentityHashMap<>();
-        int containerIndex = 0;
-        for (Slot slot : menu.slots) {
-            if (!(slot.container instanceof Inventory)) {
-                indexBySlot.put(slot, containerIndex++);
-            }
+        int[] byPosition = SlotLayout.containerIndices(playerSlotFlags(menu.slots));
+        java.util.Map<Slot, Integer> positionBySlot = new java.util.IdentityHashMap<>();
+        for (int i = 0; i < menu.slots.size(); i++) {
+            positionBySlot.put(menu.slots.get(i), i);
         }
-
         for (int i = 0; i < slots.length; i++) {
-            Integer index = indexBySlot.get(slots[i]);
-            indices[i] = index == null ? -1 : index;
+            Integer position = positionBySlot.get(slots[i]);
+            result[i] = position == null ? -1 : byPosition[position];
         }
-        return indices;
+        return result;
     }
 
-    /**
-     * 書式・装飾コード（§a, §l など）を除去します。
-     */
-    public static String stripFormatting(String input) {
-        if (input == null) {
-            return "";
+    /** メニュー内の位置ごとに「プレイヤーの持ち物のスロットか」を並べる。 */
+    public static boolean[] playerSlotFlags(List<Slot> slots) {
+        boolean[] flags = new boolean[slots.size()];
+        for (int i = 0; i < flags.length; i++) {
+            flags[i] = slots.get(i).container instanceof Inventory;
         }
-        return FORMATTING_PATTERN.matcher(input).replaceAll("");
+        return flags;
     }
 }

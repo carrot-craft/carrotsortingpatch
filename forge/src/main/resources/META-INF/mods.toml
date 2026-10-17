@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="${forge_spec_range}"
+license="MIT"
+issueTrackerURL="https://github.com/carrot-craft/carrotsortingpatch/issues"
+
+[[mods]]
+modId="carrotsortingpatch"
+version="${version}"
+displayName="CarrotCraft Sorting Patch"
+displayURL="https://github.com/carrot-craft/carrotsortingpatch"
+authors="CountyClaw4, CarrotCraft"
+description='''CarrotCraftのエンダーチェスト画面で、インベントリソートModが操作用スロットを動かさないよう守るクライアント専用Mod'''
+
+[[dependencies.carrotsortingpatch]]
+modId="forge"
+mandatory=true
+versionRange="${forge_spec_range}"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.carrotsortingpatch]]
+modId="minecraft"
+mandatory=true
+versionRange="${minecraft_version_range_maven}"
+ordering="NONE"
+side="CLIENT"

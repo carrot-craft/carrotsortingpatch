@@ -1,23 +1,65 @@
 plugins {
     id 'base'
-    id 'net.fabricmc.fabric-loom' version '1.16.1' apply false
+    id 'net.fabricmc.fabric-loom' version '1.18.4' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.18.4' apply false
     id 'net.neoforged.moddev' version '2.0.148' apply false
+    id 'net.minecraftforge.gradle' version '[7.0.17,8)' apply false
 }
 
 group = project.maven_group
 version = project.mod_version
+
+// versions/<MC>.properties を読む（検証に使う各ローダーのバージョン表）
+def loadVersions = { String mc ->
+    def f = file("versions/${mc}.properties")
+    if (!f.exists()) {
+        def known = file('versions').list().findAll { it.endsWith('.properties') }.collect { it - '.properties' }.sort()
+        throw new GradleException("versions/${mc}.properties がありません。使えるバージョン: ${known}")
+    }
+    def p = new Properties()
+    f.withReader('UTF-8') { p.load(it) }
+    return p
+}
+
+ext.legacyVersions = loadVersions('1.21.11')
+ext.modernVersions = loadVersions((findProperty('mc') ?: modern_default_mc) as String)
 
 subprojects {
     group = rootProject.group
     version = rootProject.version
 }
 
+def allLoaders = ['fabric', 'fabric-legacy', 'neoforge', 'neoforge-legacy', 'forge', 'forge-legacy']
+
 tasks.named('build') {
-    dependsOn ':fabric:build', ':neoforge:build'
+    dependsOn allLoaders.collect { ":${it}:build" }
 }
 
 tasks.register('test') {
     group = 'verification'
-    description = 'Runs tests for both loader builds.'
-    dependsOn ':fabric:test', ':neoforge:test'
+    description = 'すべてのローダー構成のテストを実行する'
+    dependsOn allLoaders.collect { ":${it}:test" }
+}
+
+// 配布用 jar を 1 か所に集めて SHA-256 を添える（GitHub Actions のリリースで使う）
+tasks.register('collectReleaseJars') {
+    group = 'distribution'
+    description = 'build/release に配布用 jar と SHA256SUMS を集める'
+    dependsOn allLoaders.collect { ":${it}:remapOrJar" }
+    def outDir = layout.buildDirectory.dir('release')
+    doLast {
+        def dir = outDir.get().asFile
+        dir.deleteDir()
+        dir.mkdirs()
+        def sums = new StringBuilder()
+        allLoaders.each { name ->
+            def jar = project(":${name}").ext.releaseJar.get().asFile
+            def dest = new File(dir, jar.name)
+            dest.bytes = jar.bytes
+            def md = java.security.MessageDigest.getInstance('SHA-256')
+            sums << md.digest(dest.bytes).encodeHex().toString() << '  ' << dest.name << '\n'
+        }
+        new File(dir, 'SHA256SUMS.txt').text = sums.toString()
+        println sums
+    }
 }

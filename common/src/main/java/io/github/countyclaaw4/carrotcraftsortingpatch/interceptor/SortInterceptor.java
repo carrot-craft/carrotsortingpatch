@@ -1,5 +1,6 @@
 package io.github.countyclaaw4.carrotcraftsortingpatch.interceptor;
 
+import io.github.countyclaaw4.carrotcraftsortingpatch.condition.SlotLayout;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
 /**
@@ -28,6 +29,6 @@ public interface SortInterceptor {
      * 除外範囲: 45 <= containerSlotIndex <= 53
      */
     default boolean shouldProtectSlot(int containerSlotIndex) {
-        return containerSlotIndex >= 45 && containerSlotIndex <= 53;
+        return SlotLayout.isProtectedContainerSlot(containerSlotIndex);
     }
 }

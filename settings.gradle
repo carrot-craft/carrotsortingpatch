@@ -4,6 +4,14 @@ pluginManagement {
             name = 'Fabric'
             url = 'https://maven.fabricmc.net/'
         }
+        maven {
+            name = 'NeoForged'
+            url = 'https://maven.neoforged.net/releases'
+        }
+        maven {
+            name = 'MinecraftForge'
+            url = 'https://maven.minecraftforge.net/'
+        }
         mavenCentral()
         gradlePluginPortal()
     }
@@ -11,4 +19,5 @@ pluginManagement {
 
 rootProject.name = 'carrotsortingpatch'
 
-include 'fabric', 'neoforge'
+// 難読化なしの 26.x 向け（modern）と、難読化ありの 1.21.11 向け（legacy）をローダーごとに分けてビルドする
+include 'fabric', 'fabric-legacy', 'neoforge', 'neoforge-legacy', 'forge', 'forge-legacy'

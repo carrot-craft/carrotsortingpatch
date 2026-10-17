@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle'
+}
+
+ext.loader = 'forge'
+ext.era = 'legacy'
+apply from: "$rootDir/gradle/common.gradle"
+
+minecraft {
+    mappings channel: 'official', version: vp.minecraft_version
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir('run')
+        }
+        register('client')
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${vp.minecraft_version}-${vp.forge_version}")
+}
+
+// Forge は jar マニフェストの MixinConfigs で Mixin 設定を読み込む
+jar {
+    manifest {
+        attributes 'MixinConfigs': 'carrotsortingpatch.mixins.json'
+    }
+}
+
+ext.releaseJar = tasks.named('jar').flatMap { it.archiveFile }
+tasks.register('remapOrJar') { dependsOn tasks.named('jar') }

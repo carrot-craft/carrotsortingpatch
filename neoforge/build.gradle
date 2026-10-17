@@ -1,27 +1,19 @@
 plugins {
+    id 'java'
     id 'net.neoforged.moddev'
 }
 
-base {
-    archivesName = "${project.archives_base_name}-neoforge"
-}
+ext.loader = 'neoforge'
+ext.era = 'modern'
+apply from: "$rootDir/gradle/common.gradle"
 
-tasks.withType(AbstractArchiveTask).configureEach {
-    archiveVersion = "${project.version}+mc${project.neoforge_minecraft_version}+"
-}
-
-sourceSets {
-    main {
-        java.srcDir '../common/src/main/java'
-        resources.srcDir '../common/src/main/resources'
-    }
-    test {
-        java.srcDir '../common/src/test/java'
-    }
+dependencies {
+    // NeoForge のテスト実行環境には slf4j が入っていないため
+    testRuntimeOnly 'org.slf4j:slf4j-api:2.0.17'
 }
 
 neoForge {
-    version = project.neoforge_version
+    version = vp.neoforge_version
 
     runs {
         client {
@@ -36,43 +28,5 @@ neoForge {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.2')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testRuntimeOnly 'org.slf4j:slf4j-api:2.0.17'
-}
-
-processResources {
-    inputs.properties([
-            version: project.version,
-            neoforge_loader_version_range: project.neoforge_loader_version_range,
-            minecraft_version_range: project.neoforge_minecraft_version_range
-    ])
-    filesMatching('META-INF/neoforge.mods.toml') {
-        expand(
-                version: project.version,
-                neoforge_loader_version_range: project.neoforge_loader_version_range,
-                minecraft_version_range: project.neoforge_minecraft_version_range
-        )
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.release = 25
-    options.encoding = 'UTF-8'
-}
-
-tasks.withType(Test).configureEach {
-    useJUnitPlatform()
-    failOnNoDiscoveredTests = false
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
+ext.releaseJar = tasks.named('jar').flatMap { it.archiveFile }
+tasks.register('remapOrJar') { dependsOn tasks.named('jar') }

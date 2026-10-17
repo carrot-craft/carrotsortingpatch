@@ -3,6 +3,7 @@ package io.github.countyclaaw4.carrotcraftsortingpatch.mixin;
 import io.github.countyclaaw4.carrotcraftsortingpatch.CarrotSortingPatch;
 import io.github.countyclaaw4.carrotcraftsortingpatch.condition.ServerCondition;
 import io.github.countyclaaw4.carrotcraftsortingpatch.condition.VaultGuiDetector;
+import io.github.countyclaaw4.carrotcraftsortingpatch.guard.ClickGuard;
 import io.github.countyclaaw4.carrotcraftsortingpatch.interceptor.InterceptorRegistry;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -24,27 +25,32 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Unique
     private boolean carrotSortingPatch$detected = false;
 
-    @Inject(method = "containerTick", at = @At("HEAD"))
-    private void onContainerTick(CallbackInfo ci) {
-        if (this.carrotSortingPatch$detected) {
-            return;
-        }
+    @Inject(method = "containerTick", at = @At("HEAD"), require = 0)
+    private void carrotSortingPatch$onContainerTick(CallbackInfo ci) {
+        try {
+            // 例外などで「人のクリック」の出口を通らなかった場合に備えて、毎ティック戻す
+            ClickGuard.reset();
 
-        // 1. サーバー判定 (play.carrotcraft.net)
-        if (!ServerCondition.isTargetServer()) {
-            return;
-        }
-
-        // 2. エンダーチェストGUI識別判定 (条件A, B, C)
-        if (VaultGuiDetector.isVaultGui(this.menu)) {
-            this.carrotSortingPatch$detected = true;
-            CarrotSortingPatch.LOGGER.info("[CarrotSortingPatch] 対象のエンダーチェストGUIを検出しました (ホスト: play.carrotcraft.net, コンテナスロット数: 54, 該当スロット: 45〜53)");
-            InterceptorRegistry.notifyVaultGuiDetected(this.menu);
+            if (this.carrotSortingPatch$detected) {
+                return;
+            }
+            if (!ServerCondition.isTargetServer()) {
+                return;
+            }
+            if (VaultGuiDetector.isVaultGui(this.menu)) {
+                this.carrotSortingPatch$detected = true;
+                CarrotSortingPatch.LOGGER.info("[CarrotSortingPatch] CarrotCraft のエンダーチェスト画面を検出しました（保護スロット: 45〜53）");
+                InterceptorRegistry.notifyVaultGuiDetected(this.menu);
+            }
+        } catch (Throwable t) {
+            // 保護が効かなくなるだけで、画面は壊さない
+            CarrotSortingPatch.LOGGER.error("[CarrotSortingPatch] 画面の判定でエラーが発生しました", t);
         }
     }
 
-    @Inject(method = "onClose", at = @At("HEAD"))
-    private void onScreenClose(CallbackInfo ci) {
+    @Inject(method = "onClose", at = @At("HEAD"), require = 0)
+    private void carrotSortingPatch$onScreenClose(CallbackInfo ci) {
         this.carrotSortingPatch$detected = false;
+        ClickGuard.reset();
     }
 }

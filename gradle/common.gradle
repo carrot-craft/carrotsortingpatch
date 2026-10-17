@@ -1,0 +1,174 @@
+// 6 つのローダー構成（fabric / neoforge / forge × modern / legacy）が共通で読み込む設定。
+// 読み込む前に、各 build.gradle で ext.loader と ext.era を設定しておくこと。
+//   modern = Minecraft 26.1〜26.3（難読化なし・Java 25）
+//   legacy = Minecraft 1.21.11（難読化あり・Java 21）
+
+def eraConfigs = [
+        modern: [
+                label          : '26.1-26.3',
+                java           : 25,
+                mcFabric       : '>=26.1 <27',
+                mcMaven        : '[26.1,27)',
+                fabricLoaderMin: '0.19.0',
+                neoLoaderRange : '[11,)',
+                neoDepRange    : '[26.1.0.19-beta,)',
+                forgeSpecRange : '[62,)',
+        ],
+        legacy: [
+                label          : '1.21.11',
+                java           : 21,
+                mcFabric       : '1.21.11',
+                mcMaven        : '[1.21.11,1.21.12)',
+                fabricLoaderMin: '0.18.0',
+                neoLoaderRange : '[4,)',
+                neoDepRange    : '[21.11,22)',
+                forgeSpecRange : '[61,)',
+        ],
+]
+
+def cfg = eraConfigs[era]
+if (cfg == null) {
+    throw new GradleException("era は modern か legacy: ${era}")
+}
+ext.eraConfig = cfg
+ext.vp = (era == 'legacy') ? rootProject.legacyVersions : rootProject.modernVersions
+
+base {
+    archivesName = "${rootProject.archives_base_name}-${loader}"
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    archiveVersion = "${project.version}+mc${cfg.label}"
+}
+
+// 共有ソース: common（時代別の差分つき）＋ ローダー固有の入口（時代別の差分があればローダー側の src/<era>/java に置く）。
+// legacy は modern と同じローダー側のファイルを再利用する
+sourceSets {
+    main {
+        java.srcDirs = ['../common/src/main/java', "../common/src/${era}/java",
+                        "../${loader}/src/main/java", "../${loader}/src/${era}/java"]
+        resources.srcDirs = ['../common/src/main/resources', "../${loader}/src/main/resources"]
+    }
+    test {
+        java.srcDirs = ['../common/src/test/java']
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+processResources {
+    def props = [
+            version              : project.version,
+            minecraft_version_range_fabric: cfg.mcFabric,
+            minecraft_version_range_maven : cfg.mcMaven,
+            fabric_loader_min    : cfg.fabricLoaderMin,
+            neoforge_loader_range: cfg.neoLoaderRange,
+            neoforge_dep_range   : cfg.neoDepRange,
+            forge_spec_range     : cfg.forgeSpecRange,
+            java_version         : cfg.java,
+    ]
+    inputs.properties(props)
+    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
+        expand(props)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = cfg.java
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(cfg.java)
+    targetCompatibility = JavaVersion.toVersion(cfg.java)
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.withType(Jar).configureEach {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${rootProject.archives_base_name}" }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mixin の対象（バニラのメソッド・フィールド）がビルド対象の Minecraft に実在するかを検証する。
+// Mixin は require = 0（見つからなくても起動はできる）にしているので、Minecraft 側で名前や引数が
+// 変わると、保護が黙って効かなくなる。それをビルドの時点で失敗にして気づけるようにする。
+// ---------------------------------------------------------------------------------------------
+def clickType = (era == 'legacy') ? 'net/minecraft/world/inventory/ClickType' : 'net/minecraft/world/inventory/ContainerInput'
+def gameModeMethod = (era == 'legacy') ? 'handleInventoryMouseClick' : 'handleContainerInput'
+
+// クラス → [メソッド名+記述子 or フィールド名]
+def expectedMixinTargets = [
+        'net/minecraft/client/gui/screens/inventory/AbstractContainerScreen': [
+                'method:containerTick()V',
+                'method:onClose()V',
+                "method:slotClicked(Lnet/minecraft/world/inventory/Slot;II" + "L${clickType};)V",
+                'field:menu',
+        ],
+        'net/minecraft/client/multiplayer/MultiPlayerGameMode'             : [
+                "method:${gameModeMethod}(III" + "L${clickType};Lnet/minecraft/world/entity/player/Player;)V",
+        ],
+]
+
+tasks.register('verifyMixinTargets') {
+    group = 'verification'
+    description = 'Mixin の対象がバニラの Minecraft に実在するか検証する'
+    def classpath = configurations.named('compileClasspath')
+    inputs.files(classpath)
+    doLast {
+        def jars = classpath.get().files.findAll { it.name.endsWith('.jar') }
+        def problems = []
+        expectedMixinTargets.each { String cls, List<String> wants ->
+            byte[] bytes = null
+            jars.find { jar ->
+                def zip = new java.util.zip.ZipFile(jar)
+                try {
+                    def entry = zip.getEntry(cls + '.class')
+                    if (entry != null) {
+                        bytes = zip.getInputStream(entry).bytes
+                        return true
+                    }
+                    return false
+                } finally {
+                    zip.close()
+                }
+            }
+            if (bytes == null) {
+                problems << "クラスが見つかりません: ${cls}"
+                return
+            }
+            // JDK 標準のクラスファイル API（Java 24 以降）で読む。ビルドは JDK 25 で行う前提
+            def model = java.lang.classfile.ClassFile.of().parse(bytes)
+            def methods = model.methods().collect { it.methodName().stringValue() + it.methodType().stringValue() } as Set
+            def fields = model.fields().collect { it.fieldName().stringValue() } as Set
+            wants.each { String want ->
+                def kind = want.substring(0, want.indexOf(':'))
+                def sig = want.substring(want.indexOf(':') + 1)
+                def found = (kind == 'method') ? methods.contains(sig) : fields.contains(sig)
+                if (!found) {
+                    problems << "${cls} に ${kind} ${sig} がありません"
+                }
+            }
+        }
+        if (!problems.isEmpty()) {
+            throw new GradleException("Mixin の対象が Minecraft ${vp.minecraft_version} に見つかりません:\n  " + problems.join('\n  '))
+        }
+        println "Mixin の対象を確認しました (Minecraft ${vp.minecraft_version}, ${expectedMixinTargets.values().flatten().size()} 件)"
+    }
+}
+
+tasks.named('check') {
+    dependsOn 'verifyMixinTargets'
+}

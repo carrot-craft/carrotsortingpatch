@@ -1,9 +1,15 @@
+# Gradle / ビルド成果物
 build/
-.git/
 .gradle/
 .sources/
 logs/
-fabric/.gradle/
-fabric/logs/
-fabric/build/
-neoforge/build/
+
+# 実行環境（runClient など）
+run/
+run-data/
+runs/
+
+# IDE
+.idea/
+*.iml
+.vscode/

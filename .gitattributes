@@ -1,0 +1,4 @@
+# 改行は LF にそろえる（Windows と Linux の CI で差分が出ないように）
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
