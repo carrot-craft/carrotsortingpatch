@@ -53,6 +53,9 @@ sourceSets {
         java.srcDirs = ['../common/src/test/java']
     }
 }
+if (loader == 'fabric') {
+    sourceSets.main.java.srcDir '../common/src/fabric/java'
+}
 
 repositories {
     mavenCentral()

@@ -1,0 +1,51 @@
+name: cache-maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      cache_operation:
+        description: キャッシュの操作
+        type: choice
+        options:
+          - rebuild
+          - delete
+        required: true
+
+permissions: {}
+
+jobs:
+  cache-maintenance:
+    name: キャッシュの操作（手動）
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: GitHub Actions キャッシュをすべて削除
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete --all --succeed-on-no-caches --repo "$GITHUB_REPOSITORY"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.cache_operation == 'rebuild'
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: inputs.cache_operation == 'rebuild'
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: inputs.cache_operation == 'rebuild'
+        with:
+          gradle-home-cache-strict-match: false
+          cache-read-only: false
+      - name: キャッシュを main ブランチのソースから再構築
+        if: inputs.cache_operation == 'rebuild'
+        run: |
+          for mc in 26.1.2 26.2 26.3; do
+            ./gradlew --no-daemon --parallel --configure-on-demand --build-cache \
+              :fabric:remapOrJar :neoforge:remapOrJar :forge:remapOrJar -Pmc="$mc"
+          done
+          ./gradlew --no-daemon --parallel --configure-on-demand --build-cache \
+            :fabric-legacy:remapOrJar :neoforge-legacy:remapOrJar :forge-legacy:remapOrJar

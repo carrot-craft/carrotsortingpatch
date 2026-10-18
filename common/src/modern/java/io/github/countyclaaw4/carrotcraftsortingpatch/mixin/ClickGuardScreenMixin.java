@@ -2,8 +2,6 @@ package io.github.countyclaaw4.carrotcraftsortingpatch.mixin;
 
 import io.github.countyclaaw4.carrotcraftsortingpatch.guard.ClickGuard;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.inventory.ContainerInput;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,12 +17,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ClickGuardScreenMixin {
 
     @Inject(method = "slotClicked", at = @At("HEAD"), require = 0)
-    private void carrotSortingPatch$enterUserClick(Slot slot, int slotId, int mouseButton, ContainerInput type, CallbackInfo ci) {
+    private void carrotSortingPatch$enterUserClick(CallbackInfo ci) {
         ClickGuard.enterUserClick();
     }
 
     @Inject(method = "slotClicked", at = @At("RETURN"), require = 0)
-    private void carrotSortingPatch$exitUserClick(Slot slot, int slotId, int mouseButton, ContainerInput type, CallbackInfo ci) {
+    private void carrotSortingPatch$exitUserClick(CallbackInfo ci) {
         ClickGuard.exitUserClick();
     }
 }

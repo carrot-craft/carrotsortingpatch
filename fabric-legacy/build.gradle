@@ -9,12 +9,14 @@ apply from: "$rootDir/gradle/common.gradle"
 
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.terraformersmc.com/releases' }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${vp.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${vp.fabric_loader_version}"
+    modImplementation "com.terraformersmc:modmenu:17.0.1"
 }
 
 // 1.21.11 は難読化ありなので、remapJar の出力が配布物

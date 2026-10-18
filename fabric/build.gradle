@@ -9,11 +9,13 @@ apply from: "$rootDir/gradle/common.gradle"
 
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.terraformersmc.com/releases' }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${vp.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${vp.fabric_loader_version}"
+    implementation "com.terraformersmc:modmenu:18.0.2"
 }
 
 // 26.x は難読化なしなので、jar がそのまま配布物

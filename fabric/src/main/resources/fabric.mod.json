@@ -18,7 +18,18 @@
   "entrypoints": {
     "client": [
       "io.github.countyclaaw4.carrotcraftsortingpatch.CarrotSortingPatchFabric"
+    ],
+    "modmenu": [
+      "io.github.countyclaaw4.carrotcraftsortingpatch.modmenu.CarrotSortingPatchModMenuApi"
     ]
+  },
+  "suggests": {
+    "modmenu": "*"
+  },
+  "custom": {
+    "modmenu": {
+      "update_checker": true
+    }
   },
   "mixins": [
     "carrotsortingpatch.mixins.json"
